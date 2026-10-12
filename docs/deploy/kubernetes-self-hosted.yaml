@@ -1,0 +1,210 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paperclip
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperclip-postgres
+  namespace: paperclip
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperclip-postgres
+  namespace: paperclip
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: paperclip-postgres
+  template:
+    metadata:
+      labels:
+        app: paperclip-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: paperclip
+            - name: POSTGRES_USER
+              value: paperclip
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: paperclip-secrets
+                  key: postgres-password
+          ports:
+            - name: postgres
+              containerPort: 5432
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1536Mi
+          startupProbe:
+            exec:
+              command: [sh, -c, 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: [sh, -c, 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperclip-postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperclip-postgres
+  namespace: paperclip
+spec:
+  selector:
+    app: paperclip-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperclip-data
+  namespace: paperclip
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperclip
+  namespace: paperclip
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: paperclip
+  template:
+    metadata:
+      labels:
+        app: paperclip
+    spec:
+      terminationGracePeriodSeconds: 90
+      containers:
+        - name: paperclip
+          image: ghcr.io/paperclipai/paperclip@sha256:047336965a43b33989634706af87c69f8ef93da2fffd4b1c364e2a93d50b8a44
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: paperclip-secrets
+                  key: postgres-password
+            - name: DATABASE_URL
+              value: postgres://paperclip:$(DATABASE_PASSWORD)@paperclip-postgres:5432/paperclip
+            - name: PAPERCLIP_PUBLIC_URL
+              value: http://paperclip.192.168.1.8.nip.io
+            - name: PAPERCLIP_ALLOWED_HOSTNAMES
+              value: paperclip.192.168.1.8.nip.io
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: paperclip-secrets
+                  key: better-auth-secret
+            - name: PAPERCLIP_TOOL_ACTION_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: paperclip-secrets
+                  key: tool-action-signing-secret
+          ports:
+            - name: http
+              containerPort: 3100
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1536Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /paperclip
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperclip-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperclip
+  namespace: paperclip
+spec:
+  selector:
+    app: paperclip
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: paperclip
+  namespace: paperclip
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: paperclip.192.168.1.8.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paperclip
+                port:
+                  name: http
