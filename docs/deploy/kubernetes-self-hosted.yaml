@@ -117,7 +117,7 @@ spec:
       terminationGracePeriodSeconds: 90
       containers:
         - name: paperclip
-          image: ghcr.io/paperclipai/paperclip@sha256:047336965a43b33989634706af87c69f8ef93da2fffd4b1c364e2a93d50b8a44
+          image: ghcr.io/paperclipai/paperclip@sha256:bc4f4146ca43ea5897e0bb391e13d3702df6d592a60c89c1ca87ee913a47c58e
           imagePullPolicy: IfNotPresent
           env:
             - name: DATABASE_PASSWORD
