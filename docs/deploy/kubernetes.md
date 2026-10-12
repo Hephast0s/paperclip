@@ -25,4 +25,7 @@ The deployment requests 1.5 GiB for Paperclip and 512 MiB for PostgreSQL, with
 limits of 4 GiB and 1.5 GiB. It runs a single replica of each. Both volumes use
 node-local storage, so they persist through pod restarts but are not highly
 available and need backups before node or disk replacement. Agent integrations
-and provider credentials are configured in Paperclip after first login.
+and provider credentials are configured in Paperclip after first login. The
+checked-in manifest pins Paperclip to `worker-1` because that node has working
+GHCR/CDN access; change the hostname selector and use a node-local data PVC on
+that node when applying it to a different cluster.

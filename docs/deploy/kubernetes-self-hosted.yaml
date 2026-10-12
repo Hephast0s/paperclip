@@ -88,7 +88,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: paperclip-data
+  name: paperclip-data-worker1
   namespace: paperclip
 spec:
   accessModes: [ReadWriteOnce]
@@ -115,6 +115,8 @@ spec:
         app: paperclip
     spec:
       terminationGracePeriodSeconds: 90
+      nodeSelector:
+        kubernetes.io/hostname: worker-1
       containers:
         - name: paperclip
           image: ghcr.io/paperclipai/paperclip@sha256:bc4f4146ca43ea5897e0bb391e13d3702df6d592a60c89c1ca87ee913a47c58e
@@ -175,7 +177,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: paperclip-data
+            claimName: paperclip-data-worker1
 ---
 apiVersion: v1
 kind: Service
