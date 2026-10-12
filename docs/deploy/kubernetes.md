@@ -16,10 +16,11 @@ kubectl apply -f docs/deploy/kubernetes-self-hosted.yaml
 ```
 
 The default address is `http://paperclip.192.168.1.8.nip.io`; change the host
-in the manifest and `PAPERCLIP_PUBLIC_URL` / `PAPERCLIP_ALLOWED_HOSTNAMES` to
-match your private DNS or ingress address. The default HTTP ingress is for a
-trusted LAN only. For access over the public internet, put authenticated
-Paperclip behind HTTPS and update those values to the HTTPS origin.
+in the manifest, `PAPERCLIP_PUBLIC_URL`, `PAPERCLIP_ALLOWED_HOSTNAMES`, and
+the probe `Host` headers to match your private DNS or ingress address. The
+default HTTP ingress is for a trusted LAN only. For access over the public
+internet, put authenticated Paperclip behind HTTPS and update those values to
+the HTTPS origin.
 
 The deployment requests 1.5 GiB for Paperclip and 512 MiB for PostgreSQL, with
 limits of 4 GiB and 1.5 GiB. It runs a single replica of each. Both volumes use
