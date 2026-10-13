@@ -45,6 +45,12 @@ const providers = [
     advanced: true,
   },
   {
+    id: "nvidia",
+    name: "NVIDIA NIM",
+    description: "NVIDIA hosted models with an OpenAI-compatible API key",
+    advanced: true,
+  },
+  {
     id: "bedrock",
     name: "Amazon Bedrock",
     description: "Bedrock API key and AWS region",
@@ -132,11 +138,11 @@ export function AiProviderSetup({
     queryFn: () => agentsApi.list(companyId),
   });
   const label = providerLabel ?? providers.find((p) => p.id === provider)?.name ?? "provider";
-  const advanced = reconnect ? Boolean(reconnect.routing) : ["openrouter", "bedrock", "gateway", "local"].includes(provider ?? "");
+  const advanced = reconnect ? Boolean(reconnect.routing) : ["openrouter", "bedrock", "gateway", "local", "nvidia"].includes(provider ?? "");
   const nativeProvider: AiProvider =
     provider === "bedrock"
       ? "anthropic"
-      : provider === "gateway" || provider === "local"
+      : provider === "gateway" || provider === "local" || provider === "nvidia"
         ? protocol === "messages"
           ? "anthropic"
           : "openai"
@@ -173,13 +179,13 @@ export function AiProviderSetup({
       const routing =
         reconnect?.routing ??
         aiProviderRoutingSchema.parse({
-          kind: provider,
-          protocol: provider === "bedrock" ? "bedrock" : protocol,
+          kind: provider === "nvidia" ? "gateway" : provider,
+          protocol: provider === "bedrock" ? "bedrock" : provider === "nvidia" ? "chat" : protocol,
           auth: provider === "openrouter" ? "bearer" : auth,
           ...(provider === "bedrock"
             ? { region }
-            : provider === "gateway" || provider === "local"
-              ? { baseUrl }
+            : provider === "gateway" || provider === "local" || provider === "nvidia"
+              ? { baseUrl: provider === "nvidia" ? "https://integrate.api.nvidia.com/v1" : baseUrl }
               : {}),
           models: models
             .split(",")
@@ -231,6 +237,7 @@ export function AiProviderSetup({
         setStep("connect");
         setApiKey("");
         setAuth("bearer");
+        if (id === "nvidia") setProtocol("chat");
         save.reset();
       }}
     />

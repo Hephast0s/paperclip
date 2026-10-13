@@ -42,7 +42,7 @@ it("shows advanced providers directly when entered from advanced connection mode
   try {
     await act(async () => root.render(<QueryClientProvider client={client}><AiProviderSetup companyId="company" advancedOnly onCancel={() => {}} onComplete={() => {}} /></QueryClientProvider>));
     const choices = Array.from(container.querySelectorAll("button[aria-label]")).map(button => button.getAttribute("aria-label"));
-    expect(choices).toEqual(["OpenRouter", "Amazon Bedrock", "Custom gateway", "Local endpoint"]);
+    expect(choices).toEqual(["OpenRouter", "NVIDIA NIM", "Amazon Bedrock", "Custom gateway", "Local endpoint"]);
     expect(container.querySelector("details")).toBeNull();
   } finally {
     await act(async () => root.unmount()); client.clear();
@@ -118,6 +118,37 @@ it("allows an ordinary member to save a personal gateway before the agent exists
     await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
     expect(aiConnectionsApi.create).toHaveBeenCalledWith("company", expect.objectContaining({ ownership: "personal", allAgents: false, agentIds: [], apiKey: "member-key" }));
     expect(onComplete).toHaveBeenCalledWith(expect.objectContaining({ mode: "delegated", connectionId: "connection", grantId: "grant" }));
+  } finally {
+    await act(async () => root.unmount()); client.clear();
+  }
+});
+
+it("connects NVIDIA NIM through its OpenAI-compatible chat endpoint", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  client.setQueryData(["ai-connections", "company", undefined], { canManageConnections: true, connections: [] });
+  client.setQueryData(["agents", "company", "provider-access"], []);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  vi.mocked(aiConnectionsApi.create).mockClear();
+  try {
+    await act(async () => root.render(<QueryClientProvider client={client}><AiProviderSetup companyId="company" onCancel={() => {}} onComplete={() => {}} /></QueryClientProvider>));
+    await act(async () => (Array.from(container.querySelectorAll("button[aria-label]")).find(button => button.getAttribute("aria-label") === "NVIDIA NIM") as HTMLButtonElement).click());
+    await act(async () => Array.from(container.querySelectorAll("button")).find(button => button.textContent === "Change")!.click());
+    const setInput = async (selector: string, value: string) => {
+      const input = container.querySelector(selector)!;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")!.set!.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    await setInput('input[aria-label="Model IDs"]', "nvidia/nemotron-3-nano-30b-a3b");
+    await setInput('input[aria-label="API key"]', "nvidia-fixture-key");
+    await act(async () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+    expect(aiConnectionsApi.create).toHaveBeenCalledWith("company", expect.objectContaining({
+      provider: "openai",
+      apiKey: "nvidia-fixture-key",
+      routing: expect.objectContaining({ kind: "gateway", protocol: "chat", baseUrl: "https://integrate.api.nvidia.com/v1", models: [{ id: "nvidia/nemotron-3-nano-30b-a3b" }] }),
+    }));
   } finally {
     await act(async () => root.unmount()); client.clear();
   }

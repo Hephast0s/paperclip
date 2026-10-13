@@ -572,12 +572,14 @@ provider token can still require reconnecting the account.
 
 ## Advanced provider routing (2026-10-02)
 
-Use the regular rows on **Connectors** to add OpenRouter, Amazon Bedrock,
+Use the regular rows on **Connectors** to add OpenRouter, NVIDIA NIM, Amazon Bedrock,
 Google Gemini, a Responses API, Messages API, Chat Completions API, or local
 endpoint connection. Each row has its own Connect action and saved accounts.
 The catalog tags these entries `model-provider`; no category UI is shown.
 Responses-compatible gateways such as Emissary use the Responses API row.
-The native subscription/API-key onboarding remains the default. Provider choices
+NVIDIA NIM uses its hosted [OpenAI-compatible Chat Completions endpoint](https://docs.api.nvidia.com/nim/reference/llm-apis); enter an
+NVIDIA API key and optional model IDs such as `nvidia/nemotron-3-nano-30b-a3b`.
+Its models run through OpenCode or Hermes. The native subscription/API-key onboarding remains the default. Provider choices
 show the existing local brand artwork and reuse the existing access step. Custom
 URLs, protocol, AWS region, and credential fields appear only after choosing the
 corresponding connector. New connections default to everyone in the organization

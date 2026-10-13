@@ -48,6 +48,24 @@ describe("provider routing", () => {
       }).success,
     ).toBe(false);
   });
+  it("routes NVIDIA NIM as an authenticated OpenAI-compatible Chat Completions connection", () => {
+    const route = aiProviderRoutingSchema.parse({
+      kind: "gateway",
+      protocol: "chat",
+      auth: "bearer",
+      baseUrl: "https://integrate.api.nvidia.com/v1",
+      models: [{ id: "nvidia/nemotron-3-nano-30b-a3b" }],
+    });
+    expect(createAiConnectionSchema.safeParse({
+      provider: "openai",
+      method: "api_key",
+      name: "NVIDIA NIM",
+      ownership: "personal",
+      apiKey: "fixture-key",
+      routing: route,
+    }).success).toBe(true);
+    expect(isAiConnectionCompatible({ provider: "openai", method: "api_key", routing: route }, "opencode_local", "nvidia/nemotron-3-nano-30b-a3b")).toBe(true);
+  });
   it("rejects unsupported protocols and excluded remote adapters", () => {
     const routing = aiProviderRoutingSchema.parse({
       kind: "gateway",
